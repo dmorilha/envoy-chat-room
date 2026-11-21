@@ -1,0 +1,58 @@
+
+static_resources:
+  listeners:
+    - name: local_listener
+      address:
+        socket_address:
+          address: 127.0.0.1
+          port_value: 10000
+
+      filter_chains:
+        - filters:
+            - name: envoy.filters.network.http_connection_manager
+              typed_config:
+                "@type": type.googleapis.com/envoy.extensions.filters.network.http_connection_manager.v3.HttpConnectionManager
+                stat_prefix: local_http
+                codec_type: AUTO
+                upgrade_configs:
+                  - upgrade_type: websocket
+                route_config:
+                  name: local_route
+                  virtual_hosts:
+                    - name: local_service
+                      domains: ["*"]
+                      routes:
+                        - match:
+                            path: "/"
+                          direct_response:
+                            status: 404
+                            body:
+                              inline_string: "File not found"
+
+                http_filters:
+                  - name: envoy.filters.http.health_check
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.health_check.v3.HealthCheck
+                      pass_through_mode: false
+                      headers:
+                        - name: ":path"
+                          exact_match: "/health"
+
+                  - name: envoy.extensions.filters.http.dynamic_modules
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_modules.v3.DynamicModuleFilter
+                      dynamic_module_config:
+                        name: chat
+                        do_not_close: true
+                      filter_name: hello_filter
+
+                  - name: envoy.filters.http.router
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
+
+admin:
+  access_log_path: /dev/null
+  address:
+    socket_address:
+      address: 127.0.0.1
+      port_value: 9901

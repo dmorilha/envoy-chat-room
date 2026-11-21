@@ -1,3 +1,4 @@
+#include <cassert>
 #include <cstring>
 
 #include <array>
@@ -10,19 +11,15 @@
 #include "abi.h"
 
 struct ChatFilterInstance {
-	const void *envoy_ptr = nullptr;
-	bool is_websocket = false;
-	std::string recv_buffer;
+  bool is_websocket = false;
+  envoy_dynamic_module_type_http_filter_envoy_ptr envoy_ptr = nullptr;
+  std::string recv_buffer;
 };
 
 static std::mutex g_clients_mtx;
 
 static std::unordered_set<ChatFilterInstance*> g_clients;
 
-/*
- * So my gut feeling tells me html() makes Envoy cook the output
- * Do you remember YIV ?
- **/
 static const char* kChatHtml = R"html(
 <!DOCTYPE html>
 <html>
@@ -119,7 +116,7 @@ envoy_dynamic_module_type_http_filter_module_ptr envoy_dynamic_module_on_http_fi
     envoy_dynamic_module_type_http_filter_envoy_ptr filter_envoy_ptr) {
   // Never called: on_http_filter_config_new returns null, so no filter instance is ever created.
   auto *instance = new ChatFilterInstance();
-  instance->envoy_ptr = filter_config_ptr;
+  instance->envoy_ptr = filter_envoy_ptr;
   return instance;
 }
 
@@ -238,7 +235,7 @@ envoy_dynamic_module_on_http_filter_request_body(
   // Read incoming body vector chunks from Envoy
   const size_t vec_size = envoy_dynamic_module_callback_http_get_body_chunks_size(filter_envoy_ptr, envoy_dynamic_module_type_http_body_type_ReceivedRequestBody);
 
-  if (vec_size > 0) {
+  if (0 < vec_size) {
     std::vector<envoy_dynamic_module_type_envoy_buffer> chunks(vec_size);
 
     envoy_dynamic_module_callback_http_get_body_chunks(
@@ -249,6 +246,7 @@ envoy_dynamic_module_on_http_filter_request_body(
     for (const auto &chunk : chunks) {
       instance->recv_buffer.append(chunk.ptr, chunk.length);
     }
+
     // Drain processed bytes from Envoy's buffer
     envoy_dynamic_module_callback_http_drain_body(
         filter_envoy_ptr,
@@ -260,9 +258,21 @@ envoy_dynamic_module_on_http_filter_request_body(
   std::string chat_msg;
   while (decode_ws_text_frame(instance->recv_buffer, chat_msg)) {
     std::string out_frame = encode_ws_text_frame(chat_msg);
+
     // Send back on the current worker stream
-    envoy_dynamic_module_callback_http_send_response_data(
-        filter_envoy_ptr, {out_frame.data(), out_frame.size()}, false);
+    {
+      std::lock_guard<std::mutex> lock(g_clients_mtx);
+      for (auto client : g_clients) {
+        assert(nullptr != client);
+        if (client->is_websocket) {
+          assert(nullptr != client->envoy_ptr);
+          envoy_dynamic_module_callback_http_send_response_data(
+              client->envoy_ptr,
+              {out_frame.data(), out_frame.size()},
+              false);
+        }
+      }
+    }
   }
 
   return envoy_dynamic_module_type_on_http_filter_request_body_status_StopIterationAndBuffer;

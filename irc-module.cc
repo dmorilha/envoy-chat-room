@@ -23,12 +23,133 @@ static std::unordered_set<ChatFilterInstance*> g_clients;
 static const char* kChatHtml = R"html(
 <!DOCTYPE html>
 <html>
-<head><title>Envoy C++ Dynamic Module Chat</title></head>
-<body style="font-family:sans-serif;max-width:600px;margin:2rem auto;">
-  <h2>Envoy C++ Dynamic Module Chat</h2>
-  <div id="chat" style="border:1px solid #ccc;height:300px;overflow-y:auto;padding:10px;margin-bottom:10px;"></div>
-  <input type="text" id="msg" style="width:75%;padding:8px;" placeholder="Type message..." onkeydown="if(event.key==='Enter'){send();}">
-  <button onclick="send();" style="padding:8px;">Send</button>
+<head><title>Envoy C++ Dynamic Module Chat</title>
+<style>
+  body {
+    margin:0;
+  }
+
+  body {
+    display:grid;
+    grid-template-rows:auto 1fr;
+    min-height:100dvh;
+    overflow:clip;
+  }
+
+  section {
+    display:flex;
+    flex-flow:column;
+    height:calc(100dvh - 64px);
+    padding-top:64px;
+  }
+
+  section.active {
+    display:fixed;
+  }
+
+  section.inactive {
+    display:none;
+  }
+
+  header {
+    background-color:lightblue;
+    opacity:0.75;
+    position:fixed;
+    top:0;
+    width:100%;
+    z-index:1;
+  }
+
+  #top-logo img {
+    height:64px;
+    width:64px;
+    margin-right:8px;
+  }
+
+  #top-logo a {
+    align-items:center;
+    display:flex;
+    text-decoration:none;
+  }
+
+  div#profile {
+    display:none;
+    position:absolute;
+    z-index:2;
+  }
+
+  div#chat {
+    background-color:#fafafa;
+    border:1px solid #d5d8d9;
+    overflow-y:auto;
+    padding:10px;
+  }
+
+  input[type="text"]:focus, select:focus, textarea:focus {
+    border-color:#4488ee;
+  }
+
+  input[type="text"], select, textarea {
+    background-color:#fafafa;
+    border:1px solid #d5d8d9;
+    padding:.7rem .9rem .6rem;
+    line-height: 1.4rem;
+  }
+</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+</head>
+<body>
+    <header>
+      <nav>
+        <div id="top-logo">
+          <a href="#">
+            <img src=""/><span>Envoy C++ Dynamic Module Chat</span>
+          </a>
+        </div>
+      </nav>
+    </header>
+    <section class="active" id="chat-section">
+      <div style="display:flex;flex-flow:row;flex:1;">
+        <div style="display:flex;flex-flow:column;min-width:200px;height:100%;">
+          <select id="user-select" multiple style="height:100%;">
+            <option>Galileo</option><br/>
+            <option>Roberto</option><br/>
+            <option>Sidney</option><br/>
+          </select>
+        </div>
+        <div style="display:flex;flex-flow:column;flex:1;">
+          <div id="chat" style="flex:1;"></div>
+          <div style="display:flex;flex-flow:row;">
+            <input type="text" id="msg" style="flex:1;" placeholder="Type message..." onkeydown="if(event.key==='Enter'){send();}"/>
+            <button onclick="send();">Send</button>
+          </div>
+        </div>
+      </div>
+      <div id="profile">
+        <table border="3" padding="0" style="background-color:white">
+          <tr>
+            <td rowspan="6" style="width:150px;">
+              <img class="picture" src="" style="object-fit:cover;object-position:top;height:100%;width:100%;" />
+            </td>
+            <td style="width:250px;">&nbsp;</td>
+          </tr>
+            <td>&nbsp;</td>
+          </tr>
+          </tr>
+            <td>&nbsp;</td>
+          </tr>
+          </tr>
+            <td>&nbsp;</td>
+          </tr>
+          </tr>
+            <td>&nbsp;</td>
+          </tr>
+          </tr>
+            <td>&nbsp;</td>
+          </tr>
+        </table>
+      </div>
+    </section>
 </body>
 <script>
   const chat = document.getElementById('chat');

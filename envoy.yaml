@@ -42,7 +42,7 @@ static_resources:
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.dynamic_modules.v3.DynamicModuleFilter
                       dynamic_module_config:
-                        name: chat
+                        name: irc 
                         do_not_close: true
                       filter_name: hello_filter
 
